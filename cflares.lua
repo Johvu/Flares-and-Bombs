@@ -9,23 +9,7 @@ local HelpShown2 = false
 local HelpShown3 = false
 
 
-function ShowHelp()
-    BeginTextCommandDisplayHelp("FLARE_HELP")
-    EndTextCommandDisplayHelp(0, false, true, -1)
-end
 
-function ShowHelp2(text)
-    BeginTextCommandDisplayHelp("STRING")
-    AddTextComponentSubstringPlayerName(text)
-    EndTextCommandDisplayHelp(0, false, true, -1)
-end
-
-function ShowHelp3(text, text2)
-    BeginTextCommandDisplayHelp("TWOSTRINGS")
-    AddTextComponentSubstringPlayerName(text)
-    AddTextComponentSubstringPlayerName(text2)
-    EndTextCommandDisplayHelp(0, false, true, -1)
-end
 
 local flare_models = {
     [GetHashKey("mogul")] = true,
@@ -71,10 +55,7 @@ Citizen.CreateThread(function()
                 RequestModel(flare_hash)
                 RequestWeaponAsset(flare_hash, 31, 26)
                 
-                if not HelpShown then
-                    HelpShown = true
-                    ShowHelp()
-                end
+
                 
                 if IsControlJustReleased(0, 355) then
                     local pos = GetEntityCoords(entity)
@@ -83,10 +64,10 @@ Citizen.CreateThread(function()
                     local offset3 = GetOffsetFromEntityInWorldCoords(entity, 6.0, -4.0, -0.2)
                     local offset4 = GetOffsetFromEntityInWorldCoords(entity, 3.0, -4.0, -0.2)
                     PlaySoundFromEntity(-1, sound_name, entity, sound_dict, true)
-                    ShootSingleBulletBetweenCoordsWithExtraParams(pos, offset1, 0, true, flare_hash, PlayerPedId(), true, true, speed, entity, false, false, false, true, true, false)
-                    ShootSingleBulletBetweenCoordsWithExtraParams(pos, offset2, 0, true, flare_hash, PlayerPedId(), true, true, speed, entity, false, false, false, true, true, false)
-                    ShootSingleBulletBetweenCoordsWithExtraParams(pos, offset3, 0, true, flare_hash, PlayerPedId(), true, true, speed, entity, false, false, false, true, true, false)
-                    ShootSingleBulletBetweenCoordsWithExtraParams(pos, offset4, 0, true, flare_hash, PlayerPedId(), true, true, speed, entity, false, false, false, true, true, false)
+                    ShootSingleBulletBetweenCoords(pos, offset1, 0, true, flare_hash, PlayerPedId(), true, true, speed, entity, false, false, false, true, true, false)
+                    ShootSingleBulletBetweenCoords(pos, offset2, 0, true, flare_hash, PlayerPedId(), true, true, speed, entity, false, false, false, true, true, false)
+                    ShootSingleBulletBetweenCoords(pos, offset3, 0, true, flare_hash, PlayerPedId(), true, true, speed, entity, false, false, false, true, true, false)
+                    ShootSingleBulletBetweenCoords(pos, offset4, 0, true, flare_hash, PlayerPedId(), true, true, speed, entity, false, false, false, true, true, false)
                     Citizen.Wait(1)
                     local timer = GetGameTimer()
                     while GetGameTimer() - timer < 2000 do
@@ -127,6 +108,7 @@ local bomb_plane_models = {
     [GetHashKey("avenger")] = true,
     [GetHashKey("akula")] = true,
     [GetHashKey("volatol")] = true,
+    [GetHashKey("alkonost")] = true,
 }
 
 local bomb_plane_models_cam_offset = {
@@ -141,6 +123,8 @@ local bomb_plane_models_cam_offset = {
     [GetHashKey("avenger")] = vector3(0.0, 0.0, 0.5),
     [GetHashKey("akula")] = vector3(0.0, 0.0, 0.8),
     [GetHashKey("volatol")] = vector3(0.0, 0.0, 2.0),
+    [GetHashKey("alkonost")] = vector3(0.0, 0.0, 2.0),
+
 }
 
 local unk_offsets = {
@@ -155,6 +139,7 @@ local unk_offsets = {
     [GetHashKey("avenger")] = 0.36,
     [GetHashKey("akula")] = 0.4,
     [GetHashKey("volatol")] = 0.54,
+    [GetHashKey("alkonost")] = 0.54,
 }
 
 function CanDropBombs(vehicle)
@@ -251,7 +236,7 @@ function DropBomb(pos, offset, veh)
         Citizen.Wait(1)
     end
     
-    ShootSingleBulletBetweenCoordsWithExtraParams(pos, offset, 0, true, bomb_model, PlayerPedId(), true, true, -4.0, veh, false, false, false, true, true, false)
+    ShootSingleBulletBetweenCoords(pos, offset, 0, true, bomb_model, PlayerPedId(), true, true, -4.0, veh, false, false, false, true, true, false)
     PlaySoundFromEntity(-1, "bomb_deployed", veh, "DLC_SM_Bomb_Bay_Bombs_Sounds", true)
 end
 
@@ -272,15 +257,13 @@ Citizen.CreateThread(function()
         Citizen.Wait(0)
         if IsPedInAnyVehicle(PlayerPedId(), false) then
             local veh = GetVehiclePedIsIn(PlayerPedId(), false)
+            print(tostring(veh))
             if CanDropBombs(veh) then
                 local vhash = GetEntityModel(veh)
                 if ((vhash == GetHashKey("avenger") or vhash == GetHashKey("tula")) and GetHoverModePercentage(veh) == 0.0) or (vhash ~= GetHashKey("tula") and vhash ~= GetHashKey("avenger")) then
                     RequestScriptAudioBank(sound_dict)
                     
-                    if not HelpShown2 and not AreBombBayDoorsOpen(veh) then
-                        HelpShown2 = true
-                        ShowHelp2("Hold ~INPUT_VEH_FLY_BOMB_BAY~ to open the bomb bay doors.")
-                    end
+
                     
                     if IsControlPressed(0, 355) then
                         local toggle = false
@@ -305,12 +288,12 @@ Citizen.CreateThread(function()
                                 DestroyCam(GetBombCamera(), false)
                                 DestroyAllCams(true)
                             else
-                                OpenBombBayDoors(veh)
-                                
-                                SetCamActive(GetBombCamera(), true)
+                                OpenVehicleBombBay(GetVehiclePedIsIn(PlayerPedId(), false))
+                                --OpenBombBayDoors(GetVehiclePedIsIn(PlayerPedId(), false))
+                                --SetCamActive(GetBombCamera(), true)
                                 local p = GetBombPosition(veh)
                                 local pOff = GetOffsetFromEntityGivenWorldCoords(veh, p.x, p.y, p.z) + bomb_plane_models_cam_offset[GetEntityModel(veh)]
-                                AttachCamToEntity(GetBombCamera(), veh, pOff, true)
+                               -- AttachCamToEntity(GetBombCamera(), veh, pOff, true)
                                 
                                 RenderScriptCams(true, false, 0, false, false)
                                 local target_pos = GetOffsetFromEntityInWorldCoords(veh, 0.0, 10000.0, 0.0)
@@ -329,10 +312,7 @@ Citizen.CreateThread(function()
                     
                     
                     if AreBombBayDoorsOpen(veh) then
-                        if not HelpShown3 then
-                            ShowHelp3("Press ~INPUT_VEH_FLY_ATTACK~ to drop a bomb.", "Hold ~INPUT_VEH_FLY_BOMB_BAY~ to close the bomb bay doors.")
-                            HelpShown3 = true
-                        end
+
                         DisableControlAction(0, 114)
                         -- DisableControlAction(0, 70)
                         if IsControlJustReleased(0, 255) then
@@ -347,6 +327,33 @@ Citizen.CreateThread(function()
                             
                             
                             DropBomb(pos, offset, veh)
+                            DropBomb(pos, offset, veh)
+                            DropBomb(pos, offset, veh)
+                            Wait(50)
+                            DropBomb(pos, offset, veh)
+                            DropBomb(pos, offset, veh)
+                            DropBomb(pos, offset, veh)
+                            Wait(50)
+                            DropBomb(pos, offset, veh)
+                            DropBomb(pos, offset, veh)
+                            DropBomb(pos, offset, veh)
+                            Wait(50)
+                            DropBomb(pos, offset, veh)
+                            DropBomb(pos, offset, veh)
+                            DropBomb(pos, offset, veh)
+                            Wait(50)
+                            DropBomb(pos, offset, veh)
+                            DropBomb(pos, offset, veh)
+                            DropBomb(pos, offset, veh)
+                            Wait(50)
+                            DropBomb(pos, offset, veh)
+                            DropBomb(pos, offset, veh)
+                            DropBomb(pos, offset, veh)
+                            Wait(50)
+                            DropBomb(pos, offset, veh)
+                            DropBomb(pos, offset, veh)
+                            DropBomb(pos, offset, veh)
+
                             -- ShootSingleBulletBetweenCoordsWithExtraParams(pos, offset, 0, true, bomb_model, PlayerPedId(), true, true, -4.0, veh, false, false, false, true, true, false)
                             -- PlaySoundFromEntity(-1, "bomb_deployed", veh, "DLC_SM_Bomb_Bay_Bombs_Sounds", true)
                             local tmp_timer = GetGameTimer()
@@ -387,4 +394,3 @@ Citizen.CreateThread(function()
         end
     end
 end)
-
